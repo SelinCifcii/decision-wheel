@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
-  Animated,
-  Easing,
 } from 'react-native';
-import Svg, { Path, G, Text as SvgText } from 'react-native-svg';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../App';
+import { Wheel } from '../components/Wheel';
 
 type Option = {
   id: string;
@@ -18,104 +18,27 @@ type Option = {
   username: string;
 };
 
-const WheelScreen = () => {
+type WheelScreenProps = NativeStackScreenProps<RootStackParamList, 'Wheel'>;
+
+const WheelScreen: React.FC<WheelScreenProps> = ({ route }) => {
   const [options, setOptions] = useState<Option[]>([]);
   const [inputText, setInputText] = useState('');
   const [winner, setWinner] = useState<string | null>(null);
-  const [isSpinning, setIsSpinning] = useState(false);
-  const spinValue = useRef(new Animated.Value(0)).current;
 
   const addOption = () => {
     if (inputText.trim()) {
       const newOption = {
         id: Date.now().toString(),
         text: inputText.trim(),
-        username: 'Kullanıcı',
+        username: route.params.username || 'Kullanıcı',
       };
       setOptions([...options, newOption]);
       setInputText('');
     }
   };
 
-  const spinWheel = () => {
-    if (options.length < 2) {
-      Alert.alert('Uyarı', 'Çarkı çevirmek için en az 2 seçenek gerekli!');
-      return;
-    }
-
-    if (isSpinning) return;
-
-    setIsSpinning(true);
-    setWinner(null);
-
-    spinValue.setValue(0);
-    Animated.timing(spinValue, {
-      toValue: 1,
-      duration: 3000,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
-      setIsSpinning(false);
-      const randomIndex = Math.floor(Math.random() * options.length);
-      setWinner(options[randomIndex].text);
-    });
-  };
-
-  const renderWheel = () => {
-    if (options.length === 0) {
-      return (
-        <View style={styles.emptyWheel}>
-          <Text>Henüz seçenek eklenmedi</Text>
-        </View>
-      );
-    }
-
-    return (
-      <Animated.View
-        style={[
-          styles.wheel,
-          {
-            transform: [
-              {
-                rotate: spinValue.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', '1800deg'],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        <Svg height="300" width="300" viewBox="-150 -150 300 300">
-          {options.map((option, index) => {
-            const sliceAngle = (360 / options.length);
-            const rotation = index * sliceAngle;
-            const angle = (rotation * Math.PI) / 180;
-            const nextAngle = ((rotation + sliceAngle) * Math.PI) / 180;
-            const radius = 130;
-
-            return (
-              <G key={option.id}>
-                <Path
-                  d={`M 0 0 L ${radius * Math.cos(angle)} ${radius * Math.sin(angle)} A ${radius} ${radius} 0 0 1 ${radius * Math.cos(nextAngle)} ${radius * Math.sin(nextAngle)} Z`}
-                  fill={`hsl(${(index * 360) / options.length}, 70%, 60%)`}
-                  stroke="white"
-                />
-                <SvgText
-                  x={70 * Math.cos(angle + sliceAngle / 2)}
-                  y={70 * Math.sin(angle + sliceAngle / 2)}
-                  fill="white"
-                  textAnchor="middle"
-                  transform={`rotate(${rotation + sliceAngle / 2 + 90}, ${70 * Math.cos(angle + sliceAngle / 2)}, ${70 * Math.sin(angle + sliceAngle / 2)})`}
-                >
-                  {option.text}
-                </SvgText>
-              </G>
-            );
-          })}
-        </Svg>
-      </Animated.View>
-    );
+  const handleSpinEnd = (winner: string) => {
+    setWinner(winner);
   };
 
   return (
@@ -136,17 +59,12 @@ const WheelScreen = () => {
       </View>
 
       <View style={styles.wheelContainer}>
-        {renderWheel()}
-        <View style={styles.pointer} />
+        <Wheel 
+          options={options.map(opt => opt.text)}
+          onSpinEnd={handleSpinEnd}
+          size={300}
+        />
       </View>
-
-      <TouchableOpacity
-        style={[styles.spinButton, (isSpinning || options.length < 2) && styles.disabledButton]}
-        onPress={spinWheel}
-        disabled={isSpinning || options.length < 2}
-      >
-        <Text style={styles.spinButtonText}>Çarkı Çevir</Text>
-      </TouchableOpacity>
 
       {winner && (
         <View style={styles.winnerContainer}>
@@ -210,45 +128,7 @@ const styles = StyleSheet.create({
   wheelContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: 320,
     marginVertical: 20,
-  },
-  wheel: {
-    width: 300,
-    height: 300,
-  },
-  pointer: {
-    position: 'absolute',
-    top: -10,
-    width: 20,
-    height: 20,
-    backgroundColor: 'red',
-    transform: [{ rotate: '45deg' }],
-  },
-  emptyWheel: {
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: '#eee',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#ddd',
-  },
-  spinButton: {
-    backgroundColor: '#2196F3',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  spinButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
   },
   winnerContainer: {
     backgroundColor: 'white',

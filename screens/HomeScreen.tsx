@@ -6,14 +6,19 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  Alert 
+  Alert,
+  FlatList
 } from 'react-native';
 import type { HomeScreenProps } from '../App';
 import { useSocket } from '../context/SocketContext';
+import { Wheel } from '../components/Wheel'; // Wheel bileşenini import ediyoruz
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [joinModalVisible, setJoinModalVisible] = useState(false);
   const [roomCode, setRoomCode] = useState('');
+  const [options, setOptions] = useState<string[]>([]);
+  const [inputText, setInputText] = useState('');
+   const [winner, setWinner] = useState<string | null>(null);
   const { error } = useSocket();
 
   const handleJoinRoom = () => {
@@ -27,30 +32,75 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setRoomCode('');
   };
 
+  const addOption = () => {
+    if (inputText.trim()) {
+      setOptions([...options, inputText.trim()]);
+      setInputText('');
+    }
+  };
+
+  const handleSpinEnd = (winner: string) => {
+    setWinner(winner);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Karar Çarkı</Text>
       
-      <TouchableOpacity 
-        style={styles.button}
-        onPress={() => navigation.navigate('Wheel', { roomCode: '', username: 'Yerel Kullanıcı' })}
-      >
-        <Text style={styles.buttonText}>Yeni Çark Oluştur</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity 
+          style={[styles.button, styles.onlineButton]}
+          onPress={() => navigation.navigate('OnlineRoom', { roomCode: '' })}
+        >
+          <Text style={styles.buttonText}>Online Oda Oluştur</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={[styles.button, styles.onlineButton]}
-        onPress={() => navigation.navigate('OnlineRoom', { roomCode: '' })}
-      >
-        <Text style={styles.buttonText}>Online Oda Oluştur</Text>
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.button, styles.joinButton]}
+          onPress={() => setJoinModalVisible(true)}
+        >
+          <Text style={styles.buttonText}>Odaya Katıl</Text>
+        </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity 
-        style={[styles.button, styles.joinButton]}
-        onPress={() => setJoinModalVisible(true)}
-      >
-        <Text style={styles.buttonText}>Odaya Katıl</Text>
-      </TouchableOpacity>
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          value={inputText}
+          onChangeText={setInputText}
+          placeholder="Seçenek ekleyin..."
+        />
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={addOption}
+        >
+          <Text style={styles.buttonText}>+</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.wheelContainer}>
+        <Wheel 
+          options={options}
+          onSpinEnd={handleSpinEnd}
+          size={300}
+        />
+      </View>
+
+      <View style={styles.listContainer}>
+        <Text style={styles.listTitle}>Eklenen Seçenekler:</Text>
+        <FlatList
+          data={options}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.optionItem}>
+              <Text style={styles.optionText}>{item}</Text>
+            </View>
+          )}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>Henüz seçenek eklenmedi.</Text>
+          }
+        />
+      </View>
 
       <Modal
         animationType="slide"
@@ -63,7 +113,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <Text style={styles.modalTitle}>Odaya Katıl</Text>
             
             <TextInput
-              style={styles.input}
+              style={styles.modalInput}
               value={roomCode}
               onChangeText={setRoomCode}
               placeholder="Oda kodunu girin"
@@ -99,23 +149,48 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     padding: 20,
     backgroundColor: '#f5f5f5',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 40,
+    textAlign: 'center',
+    marginVertical: 20,
     color: '#333',
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 10,
+    marginRight: 10,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  addButton: {
+    backgroundColor: '#4CAF50',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   button: {
-    width: '80%',
+    width: '48%',
     backgroundColor: '#4CAF50',
     padding: 15,
     borderRadius: 10,
-    marginVertical: 10,
     alignItems: 'center',
   },
   onlineButton: {
@@ -126,8 +201,43 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+  },
+  wheelContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 20,
+  },
+  listContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 15,
+  },
+  listTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  optionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 20,
   },
   modalOverlay: {
     flex: 1,
@@ -148,7 +258,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     color: '#333',
   },
-  input: {
+  modalInput: {
     width: '100%',
     backgroundColor: '#f5f5f5',
     padding: 15,
