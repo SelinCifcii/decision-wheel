@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-
 import HomeScreen from './screens/HomeScreen';
 import WheelScreen from './screens/WheelScreen';
 import OnlineRoomScreen from './screens/OnlineRoomScreen';
+import SplashScreen from './components/SplashScreen';
 import { SocketProvider } from './context/SocketContext';
 
 export type RootStackParamList = {
@@ -21,6 +21,11 @@ export type OnlineRoomScreenProps = NativeStackScreenProps<RootStackParamList, '
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const App = () => {
+  const [isLoading, setIsLoading] = useState(true);
+
+  if (isLoading) {
+    return <SplashScreen setIsLoading={setIsLoading} />; // setIsLoading prop'unu ekliyoruz
+  }
   return (
     <SocketProvider>
       <NavigationContainer>
